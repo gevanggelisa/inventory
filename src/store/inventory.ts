@@ -8,6 +8,7 @@ type SortOrder = 'asc' | 'desc'
 
 interface InventoryState {
   data: InventoryTableItem[];
+  allData: InventoryTableItem[];
   stockData: StockItem[];
   selected: InventoryItem | null;
   loading: boolean;
@@ -21,7 +22,7 @@ interface InventoryState {
   totalData: number;
 
   isOpenModal: boolean;
-  modalType: 'view' | 'history' | 'delete' | '';
+  modalType: 'view' | 'history' | 'delete' | 'add' | '';
   activeTab: 'all' | 'pending';
 
   setSearch: (value: string) => void;
@@ -32,17 +33,19 @@ interface InventoryState {
   setSelected: (value: InventoryItem | null) => void;
   setIsOpenModal: (value: boolean) => void;
   setIsEditStock: (value: boolean) => void;
-  setModalType: (value: 'view' | 'history' | 'delete' | '') => void;
+  setModalType: (value: 'view' | 'history' | 'delete' | 'add' | '') => void;
   setActiveTab: (value: 'all' | 'pending') => void;
 
   fetchData: () => Promise<void>;
+  fetchAllData: () => Promise<void>;
   buildChartData: (id: number, data: StockItem[]) => StockGraph[];
-  updateItem: (id: number, payload: Partial<InventoryItem>) => Promise<void>;
+  updateItem: (inventory_id: number, payload: Partial<StockItem>) => Promise<void>;
   approveRejectItem: (id: number, action: string) => Promise<void>;
 }
 
 export const useInventoryStore = create<InventoryState>((set, get) => ({
   data: [],
+  allData: [],
   stockData: [],
   loading: false,
 
@@ -76,6 +79,34 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     } else {
       set({ sortBy: key, order: 'asc' })
     }
+  },
+
+  fetchAllData: async () => {
+    set({ loading: true })
+
+    const res = await fetch('/api/inventory')
+    const data = await res.json()
+
+    const resStock = await fetch('/api/inventory/stock')
+    const dataStock = await resStock.json()
+
+    const pendingStock = dataStock?.filter(
+      (s: StockItem) => s?.status === 'pending'
+    )
+
+    const pendingInventoryIds = new Set(
+      pendingStock.map((s: StockItem) => s.inventory_id)
+    )
+
+    const allData = data?.filter(
+      (invent: InventoryItem) =>
+        !pendingInventoryIds.has(invent.id)
+    )
+
+    set({
+      allData,
+      loading: false,
+    })
   },
 
   fetchData: async () => {
@@ -134,12 +165,18 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
 
     result = result.slice(from, to)
 
-    set({ data: result, stockData: dataStock, totalPage, totalData, loading: false })
+    set({
+      data: result,
+      stockData: dataStock,
+      totalPage,
+      totalData,
+      loading: false,
+    })
   },
 
   buildChartData: (id: number, data: StockItem[]) => {
     const filtered = data
-      .filter((item) => item.inventory_id === id)
+      .filter((item) => item.inventory_id === id && item?.status !== 'pending')
       .sort(
         (a, b) =>
           new Date(a.updatedAt).getTime() -
@@ -165,8 +202,8 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     return result
   },
 
-  updateItem: async (id: number, payload: Partial<InventoryItem>) => {
-    await fetch(`/api/inventory/${id}`, {
+  updateItem: async (inventory_id: number, payload: Partial<StockItem>) => {
+    await fetch(`/api/inventory/stock/${inventory_id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -180,7 +217,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action,
+        action: action,
       }),
     })
 

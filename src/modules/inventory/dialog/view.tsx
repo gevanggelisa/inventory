@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 
-import { InventoryItem, StockItem } from "@/types"
+import { StockItem } from "@/types"
 import { useInventoryStore } from "@/store"
 import { formatCurrency } from "@/lib/helper"
 
@@ -30,43 +30,77 @@ export const ViewInventoryDialog = () => {
     setIsOpenModal,
     setModalType,
     isEditStock,
+    updateItem,
     setIsEditStock,
   } = useInventoryStore()
 
+  const [qty, setQty] = useState<number>(selected?.qty || 0)
+
+  const stocks = useMemo(() => {
+    return stockData?.filter((stock: StockItem) => stock?.inventory_id === selected?.id)
+  }, [stockData, selected])
+
   const data = useMemo(() => {
+    const pendingStock = stocks?.find((stock) => stock?.status === 'pending')
+
     return [
       {
         label: 'Name',
         value: selected?.name,
+        is_display: true,
       },
       {
         label: 'SKU',
         value: selected?.sku,
+        is_display: true,
       },
       {
         label: 'Category',
         value: selected?.category,
+        is_display: true,
       },
       {
         label: 'Quantity',
         value: selected?.qty,
+        is_display: true,
+      },
+      {
+        label: 'Current Quantity',
+        value: pendingStock?.current,
+        is_display: !!pendingStock,
+      },
+      {
+        label: 'Status',
+        value: `${pendingStock?.status} - ${pendingStock?.action}`,
+        is_display: !!pendingStock,
       },
       {
         label: 'Price',
         value: formatCurrency(selected?.price || 0),
+        is_display: true,
       },
       {
         label: 'Last Updated',
         value: moment(selected?.updatedAt).format('DD MMM YYYY HH:mm'),
+        is_display: true,
       },
-    ]
-  }, [selected])
+    ]?.filter((item) => Boolean(item?.is_display))
+  }, [selected, stocks])
 
-  const handleChange = (name: string, value: number | string) => {
-    setSelected({
-      ...selected as InventoryItem,
-      [name]: Number(value),
+  const handleSave = async() => {
+    updateItem(selected?.id ?? 0, {
+      id: undefined,
+      inventory_id: selected?.id,
+      status: 'pending',
+      action: stocks?.length > 0 ? 'update' : 'add',
+      prev: selected?.qty,
+      current: Number(qty),
+      createdAt: moment().toISOString(),
+      updatedAt: moment().toISOString(),
     })
+
+    setIsEditStock(false)
+    setQty(0)
   }
 
   const onOpenChange = (isOpen: boolean) => {
@@ -75,6 +109,7 @@ export const ViewInventoryDialog = () => {
       setIsOpenModal(false)
       setSelected(null)
       setIsEditStock(false)
+      setQty(0)
     }
   }
 
@@ -101,14 +136,14 @@ export const ViewInventoryDialog = () => {
                     <Input
                       type="number"
                       name="qty"
-                      value={selected?.qty || 0}
-                      onChange={(event: React.ChangeEvent<HTMLInputElement>) => handleChange(event?.target?.name, event?.target?.value)}
+                      value={qty || 0}
+                      onChange={(event: React.ChangeEvent<HTMLInputElement>) => setQty(Number(event?.target?.value))}
                       placeholder="Quantity"
                       onWheel={(e) => e.currentTarget.blur()}
                     />
                     <div className="flex gap-x-2 items-center">
                       <Check
-                        onClick={() => setIsEditStock(!isEditStock)}
+                        onClick={handleSave}
                         className="cursor-pointer text-green-600"
                         size={14}
                       />
@@ -124,12 +159,15 @@ export const ViewInventoryDialog = () => {
                     <span>{item?.value}</span>
                     <div className="flex gap-x-2 items-center">
                       <button
-                        onClick={() => setIsEditStock(true)}
+                        onClick={() => {
+                          setIsEditStock(true)
+                          setQty(selected?.qty || 0)
+                        }}
                         className="underline cursor-pointer"
                       >
                         Edit
                       </button>
-                      {stockData?.filter((stock: StockItem) => stock?.inventory_id === selected?.id)?.length > 0 ? (
+                      {stocks?.length > 0 ? (
                         <History
                           className="cursor-pointer"
                           size={16}

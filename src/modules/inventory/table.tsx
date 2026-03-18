@@ -5,7 +5,7 @@ import React, { Suspense, useEffect, useMemo } from "react"
 import { BaseTable, Column } from "@/components"
 import { ViewStockHistoryDialog, ViewInventoryDialog } from "./dialog"
 
-import { formatCurrency } from "@/lib/helper"
+import { capitalize, formatCurrency } from "@/lib/helper"
 import { useInventoryStore } from "@/store"
 import { InventoryTableItem } from "@/types"
 
@@ -36,7 +36,12 @@ export const InventoryTable = () => {
       { key: "name", header: "Name", sortable: true },
       { key: "sku", header: "SKU", sortable: true },
       { key: "category", header: "Category", sortable: true },
-      { key: "qty", header: "Qty", sortable: true },
+      {
+        key: "qty",
+        header: "Qty",
+        sortable: activeTab === 'all' ? true : false,
+        render: (item) => activeTab === 'all' ? item?.qty : `${item?.qty}  → ${item?.current}`
+      },
       {
         key: "price",
         header: "Price",
@@ -49,11 +54,16 @@ export const InventoryTable = () => {
       return base
     } else {
       return [...base,
-        { key: "status", header: 'Status', render: (item: InventoryTableItem) => (
-          <div>
-            {item?.status} - {item?.action}
-          </div>
-        ) }]
+        {
+          key: "status",
+          header: 'Status',
+          render: (item: InventoryTableItem) => (
+            <div>
+              {capitalize(item?.status || '')} - {capitalize(item?.action || '')}
+            </div>
+          )
+        }
+      ]
     }
   }, [activeTab])
 
@@ -66,34 +76,27 @@ export const InventoryTable = () => {
         renderActions={(row) => (
           <div className="flex gap-2">
             {activeTab === 'all' ? (
-              <>
-                <button
-                  onClick={() => {
-                    setSelected(row)
-                    setIsOpenModal(true)
-                    setModalType('view')
-                  }}
-                  className="cursor-pointer text-blue-500"
-                >
-                  View
-                </button>
-                <button
-                  className="cursor-pointer text-red-500"
-                >
-                  Delete
-                </button>
-              </>
+              <button
+                onClick={() => {
+                  setSelected(row)
+                  setIsOpenModal(true)
+                  setModalType('view')
+                }}
+                className="cursor-pointer text-blue-500"
+              >
+                View
+              </button>
             ) : (
               <>
                 <button
-                  onClick={() => approveRejectItem(row?.id, 'approved')}
+                  onClick={() => approveRejectItem(row?.stockId || 0, 'approved')}
                   className="cursor-pointer text-green-500"
                 >
                   Approve
                 </button>
                 <button
                   className="cursor-pointer text-red-500"
-                  onClick={() => approveRejectItem(row?.id, 'rejected')}
+                  onClick={() => approveRejectItem(row?.stockId || 0, 'rejected')}
                 >
                   Reject
                 </button>

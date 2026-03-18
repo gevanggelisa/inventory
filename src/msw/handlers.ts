@@ -87,8 +87,8 @@ export const handlers = [
     const id = Number(params?.id)
     const body = (await request.json()) as { action: string }
 
-    let updatedStock: StockItem[] = []
-    let updatedData: InventoryItem[] = []
+    let updatedStock: StockItem[] = stock
+    let updatedData: InventoryItem[] = inventory
     const findData = stock?.find((item) => item?.id === id)
 
     if (body?.action === 'approved') {
@@ -139,7 +139,7 @@ export const handlers = [
     return HttpResponse.json({ success: true })
   }),
 
-  // DELETE
+  // DELETE STOCK
   http.delete(`${BASE_URL}/stock/:id`, ({ params }) => {
     const stock = getStock()
 
