@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Inventory Management System (Frontend Only)
+### Overview
 
-## Getting Started
+This project is a frontend-only Inventory Management System built using modern web technologies. It simulates real-world inventory workflows including stock management, approval processes, and data visualization.
 
-First, run the development server:
+The application mimics a real backend using mock APIs and provides a responsive, interactive UI.
 
-```bash
-npm run dev
-# or
+### Tech Stack
+
+- Framework: Next.js (App Router)
+- Language: TypeScript
+- State Management: Zustand
+- Data Fetching: TanStack React Query
+- Mock API: MSW (Mock Service Worker)
+- Styling: Tailwind CSS + shadcn/ui
+- Charts: Recharts
+- Date Handling: Moment.js
+
+### How to Run the Project
+1. Install dependencies
+yarn install
+2. Run development server
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+3. Open in browser
+http://localhost:3000
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Architectural Decisions
+1. Separation of Concerns
+   - UI Layer: Components (Table, Dialog, Chart)
+   - State Layer: Zustand (global state management)
+   - Data Layer: MSW + localStorage (mock backend simulation)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+2. Mock API using MSW
+   - MSW is used to simulate real API behavior.
+   - All CRUD operations are asynchronous to mimic real network calls.
+   - Data is persisted using localStorage.
+     
+3. State Management Strategy
+   - Zustand is used for global UI + business state (inventory, stock, modal state).
+   - React Query is used for async handling and caching behavior.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Data Modeling
+   - Two main entities:
+     - Inventory: Represents live (approved) data
+     - Stock: Represents pending changes (add, update, delete)
+   - This separation allows implementation of an approval workflow.
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+5. Approval Workflow Design
+   - Staff actions (Add, Edit, Delete) do NOT directly update inventory.
+   - Instead, they create pending stock records:
+     - status: pending
+     - action: add | update | delete
+   - Officer actions:
+     - Approve: commit changes to inventory
+     - Reject: discard changes
+       
+6. Assumptions Made
+   - Only latest stock entry can be edited/deleted.
+   - Validation is handled on frontend only.
+   - IDs are generated using incremental logic.
+   - Historical stock data is either mocked or derived from stock records.
+     
+7. Folder structure
+   ```bash
+   | app -> page / routing and layout
+   | components
+     | custom -> custom component
+     | ui -> component generate using shadcn/ui
+   | lib -> utilities
+   | modules
+   | msw -> endpoint api
+     | data -> static / mock data
+     | storage -> handling data on localstorage
+   | providers -> React Query provider component that also sets up MSW (Mock Service Worker) for API mocking
+   | store -> state management and function storing
+   | types
+       
+   ```
